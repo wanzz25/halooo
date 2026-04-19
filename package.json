@@ -1,0 +1,16 @@
+{
+  "name": "mc-autobackup",
+  "version": "2.1.0",
+  "description": "Minecraft Auto Backup via Pterodactyl Panel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": ["minecraft", "pterodactyl", "backup"],
+  "author": "wanzz",
+  "license": "MIT"
+}
