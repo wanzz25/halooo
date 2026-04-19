@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — MC AutoBackup</title>
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+body{display:flex;min-height:100vh;}
+/* Sidebar */
+.sidebar{width:228px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+.sb-brand{padding:20px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.sb-icon{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 0 14px rgba(0,229,160,.3);}
+.sb-title{font-family:var(--display);font-size:14px;font-weight:800;line-height:1.1;}
+.sb-title span{color:var(--accent);}
+.sb-ver{font-size:9px;color:var(--muted);letter-spacing:1px;}
+.nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;}
+.nav-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;padding:8px 8px 4px;}
+.nav-link{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);font-size:12px;color:var(--muted2);cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left;}
+.nav-link:hover{background:var(--border);color:var(--text);}
+.nav-link.active{background:var(--accent-dim);color:var(--accent);font-weight:600;}
+.nav-link .ic{font-size:14px;width:20px;text-align:center;}
+.sb-user{padding:14px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.u-av{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.u-info{flex:1;min-width:0;}
+.u-name{font-size:12px;font-weight:600;}
+.u-role{font-size:10px;color:var(--muted2);}
+.btn-out{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;font-size:14px;transition:color .2s;flex-shrink:0;}
+.btn-out:hover{color:var(--danger);}
+/* Main */
+.main{margin-left:228px;flex:1;display:flex;flex-direction:column;min-height:100vh;}
+.topbar{padding:14px 26px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(8,11,16,.85);backdrop-filter:blur(10px);position:sticky;top:0;z-index:50;}
+.pg-title{font-family:var(--display);font-size:18px;font-weight:700;}
+.content{padding:26px;flex:1;}
+.page{display:none;}
+.page.active{display:block;animation:fadeUp .28s ease;}
+
+/* ─ Stats row ─ */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:relative;overflow:hidden;}
+.sc::after{content:'';position:absolute;bottom:0;right:0;width:55px;height:55px;border-radius:50%;opacity:.05;background:var(--accent);transform:translate(18px,18px);}
+.sc-ic{font-size:18px;margin-bottom:10px;}
+.sc-val{font-family:var(--display);font-size:24px;font-weight:800;color:var(--accent);line-height:1;margin-bottom:4px;}
+.sc-lbl{font-size:10px;color:var(--muted2);}
+
+/* ─ Multi-server control panel ─ */
+.multi-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;overflow:hidden;position:relative;}
+.multi-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,var(--accent),transparent 60%);}
+.mp-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.mp-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.mp-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.mp-body{padding:18px 20px;}
+
+/* Server rows inside panel */
+.server-rows{display:flex;flex-direction:column;gap:10px;}
+.server-row{
+  display:grid;
+  grid-template-columns: 20px 1fr auto auto;
+  align-items:center;gap:12px;
+  padding:12px 14px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
+  transition:border-color .2s;
+}
+.server-row.running{border-color:var(--accent);background:rgba(0,229,160,.04);}
+.server-row.done{border-color:rgba(0,229,160,.3);}
+.server-row.failed{border-color:rgba(255,77,109,.3);background:rgba(255,77,109,.03);}
+.server-row.disabled{opacity:.4;}
+
+/* Checkbox */
+.srv-check{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+
+.srv-info{min-width:0;}
+.srv-label{font-size:13px;font-weight:600;}
+.srv-meta{font-size:11px;color:var(--muted2);margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+/* Per-server progress bar */
+.srv-prog{width:120px;flex-shrink:0;}
+.srv-prog-bar{height:4px;background:var(--border2);border-radius:99px;overflow:hidden;margin-bottom:3px;}
+.srv-prog-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:99px;transition:width .4s ease;width:0;}
+.srv-prog-label{font-size:10px;color:var(--muted2);text-align:right;}
+
+.srv-status{flex-shrink:0;}
+
+/* Global progress */
+.global-prog{margin-top:16px;padding:14px 16px;background:rgba(0,229,160,.04);border:1px solid rgba(0,229,160,.12);border-radius:var(--radius-sm);display:none;}
+.gp-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted2);margin-bottom:8px;}
+.gp-bar{height:6px;background:var(--border2);border-radius:99px;overflow:hidden;}
+.gp-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:99px;transition:width .4s ease;width:0;}
+
+/* Auto config */
+.auto-cfg{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.iv-row{display:flex;gap:8px;}
+.iv-row input{flex:1;min-width:60px;}
+.iv-row select{width:100px;flex-shrink:0;}
+.timer-strip{display:none;align-items:center;gap:10px;margin-top:12px;padding:11px 16px;background:var(--accent-dim);border:1px solid rgba(0,229,160,.15);border-radius:var(--radius-sm);font-size:12px;color:var(--accent);}
+#countdown{font-weight:700;font-size:15px;}
+
+/* Log per server */
+.log-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.log-tab{padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--muted2);transition:all .15s;}
+.log-tab.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);font-weight:600;}
+.log-box{background:#060810;border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;height:200px;overflow-y:auto;font-size:11px;line-height:1.9;}
+.log-box::-webkit-scrollbar{width:4px;}
+.log-box::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px;}
+.ll{display:flex;gap:8px;}
+.lt{color:var(--muted);flex-shrink:0;font-size:10px;}
+.lm.ok{color:var(--accent);}
+.lm.err{color:var(--danger);}
+.lm.warn{color:var(--warn);}
+.lm.info{color:var(--blue);}
+
+/* Backup list */
+.bk-list{display:flex;flex-direction:column;gap:10px;}
+.bk-item{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);flex-wrap:wrap;animation:fadeUp .2s ease;}
+.bk-ic{font-size:18px;flex-shrink:0;}
+.bk-info{flex:1;min-width:0;}
+.bk-name{font-size:13px;font-weight:600;}
+.bk-meta{font-size:11px;color:var(--muted2);margin-top:2px;}
+.bk-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.section-title{font-size:13px;font-weight:600;}
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:12px;}
+.card-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);}
+.card-head-p{padding:16px 20px;border-bottom:1px solid var(--border);}
+.card-body-p{padding:16px;}
+
+@media(max-width:700px){
+  .sidebar{transform:translateX(-100%);}
+  .main{margin-left:0;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .server-row{grid-template-columns:20px 1fr auto;}
+  .srv-prog{display:none;}
+  .auto-cfg{flex-direction:column;align-items:flex-start;}
+}
+</style>
+</head>
+<body class="grid-bg">
+
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-icon">⛏️</div>
+    <div><div class="sb-title">MC<span>Backup</span></div><div class="sb-ver">PTERODACTYL v2.1</div></div>
+  </div>
+  <nav class="nav">
+    <div class="nav-label">Menu</div>
+    <button class="nav-link active" onclick="showPage('dash')"><span class="ic">💾</span> Dashboard</button>
+    <button class="nav-link" onclick="go('apikeys.html')"><span class="ic">🔑</span> API Keys</button>
+    <button class="nav-link" onclick="showPage('history')"><span class="ic">🗂</span> Riwayat Backup</button>
+    <button class="nav-link" onclick="showPage('log')"><span class="ic">📋</span> Log</button>
+    <div id="nav-admin" style="display:none">
+      <div class="nav-label">Admin</div>
+      <button class="nav-link" onclick="go('admin.html')"><span class="ic">👥</span> Kelola User</button>
+    </div>
+  </nav>
+  <div class="sb-user">
+    <div class="u-av" id="u-av"></div>
+    <div class="u-info"><div class="u-name" id="u-name">—</div><div class="u-role" id="u-role">—</div></div>
+    <button class="btn-out" onclick="logout()">⏻</button>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="pg-title" id="pg-title">Dashboard</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="font-size:11px;color:var(--muted2)" id="topbar-info"></span>
+      <button class="btn btn-ghost btn-sm" onclick="checkAll()">☑ Pilih Semua</button>
+      <button class="btn btn-primary btn-sm" id="btn-now" onclick="backupAll()" disabled>⚡ Backup Semua Sekarang</button>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- Dashboard page -->
+    <div class="page active" id="page-dash">
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="sc"><div class="sc-ic">🖥</div><div class="sc-val" id="s-servers">0</div><div class="sc-lbl">Server Aktif</div></div>
+        <div class="sc"><div class="sc-ic">📦</div><div class="sc-val" id="s-total">0</div><div class="sc-lbl">Total Backup</div></div>
+        <div class="sc"><div class="sc-ic">💽</div><div class="sc-val" id="s-size">0 MB</div><div class="sc-lbl">Ukuran Total</div></div>
+        <div class="sc"><div class="sc-ic">🕐</div><div class="sc-val" id="s-last" style="font-size:15px">—</div><div class="sc-lbl">Terakhir Backup</div></div>
+      </div>
+
+      <!-- Multi-server control panel -->
+      <div class="multi-panel">
+        <div class="mp-head">
+          <div class="mp-title">
+            ⚡ Multi-Server Backup Control
+            <span style="font-size:10px;color:var(--muted2);font-weight:400" id="selected-count">(0 dipilih)</span>
+          </div>
+          <div class="mp-actions">
+            <button class="btn btn-primary btn-sm" id="btn-auto-start" onclick="startAutoAll()" disabled>▶ Auto Semua</button>
+            <button class="btn btn-danger btn-sm" id="btn-auto-stop" onclick="stopAutoAll()" disabled>⏹ Stop Auto</button>
+          </div>
+        </div>
+
+        <div class="mp-body">
+          <!-- Server rows (one per API key) -->
+          <div class="server-rows" id="server-rows">
+            <div class="empty" style="padding:24px">Loading servers...</div>
+          </div>
+
+          <!-- Global progress -->
+          <div class="global-prog" id="global-prog">
+            <div class="gp-label">
+              <span id="gp-text">Memproses...</span>
+              <span id="gp-count">0/0</span>
+            </div>
+            <div class="gp-bar"><div class="gp-fill" id="gp-fill"></div></div>
+          </div>
+
+          <!-- Auto backup config -->
+          <div class="auto-cfg">
+            <div style="font-size:12px;color:var(--muted2)">⏱ Interval Auto Backup:</div>
+            <div class="field" style="margin:0">
+              <div class="iv-row">
+                <input type="number" id="iv-val" value="6" min="1" max="999" style="width:70px"/>
+                <select id="iv-unit">
+                  <option value="minutes">Menit</option>
+                  <option value="hours" selected>Jam</option>
+                  <option value="days">Hari</option>
+                </select>
+              </div>
+            </div>
+            <div class="field" style="margin:0">
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted2)">
+                Maks: <input type="number" id="max-bk" value="10" min="1" max="100" style="width:60px"/> backup/server
+              </div>
+            </div>
+          </div>
+
+          <div class="timer-strip" id="timer-strip">
+            ⏱ Backup berikutnya: <span id="countdown">--:--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent backups -->
+      <div class="card-box">
+        <div class="card-head-p">
+          <div class="section-head" style="margin-bottom:0">
+            <div class="section-title">📦 Backup Terbaru</div>
+            <button class="btn btn-ghost btn-sm" onclick="showPage('history')">Lihat semua →</button>
+          </div>
+        </div>
+        <div class="card-body-p">
+          <div class="bk-list" id="recent-list"><div class="empty">Belum ada backup.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History page -->
+    <div class="page" id="page-history">
+      <div class="card-box">
+        <div class="card-head-p">
+          <div class="section-head" style="margin-bottom:0">
+            <div class="section-title">🗂 Semua Riwayat Backup</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="hist-filter" onchange="loadHistory()" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--text);font-family:var(--mono);font-size:11px;">
+                <option value="">Semua Server</option>
+              </select>
+              <button class="btn btn-ghost btn-sm" onclick="loadHistory()">↻</button>
+            </div>
+          </div>
+        </div>
+        <div class="card-body-p">
+          <div class="bk-list" id="hist-list"><div class="empty">Loading...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log page -->
+    <div class="page" id="page-log">
+      <div class="card-box">
+        <div class="card-head-p">
+          <div class="section-head" style="margin-bottom:0">
+            <div class="section-title">📋 Log Per Server</div>
+            <button class="btn btn-danger btn-sm" onclick="clearActiveLog()">🗑 Hapus</button>
+          </div>
+        </div>
+        <div class="card-body-p">
+          <div class="log-tabs" id="log-tabs"></div>
+          <div class="log-box" id="log-box"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="../assets/app.js"></script>
+<script>
+const go = p => window.location.href = p;
+let ME = Session.require('../index.html');
+if (!ME) throw '';
+{
+  const av = document.getElementById('u-av');
+  av.textContent = (ME.displayName||ME.username)[0].toUpperCase();
+  av.style.background = avatarColor(av.textContent);
+  document.getElementById('u-name').textContent = ME.displayName||ME.username;
+  document.getElementById('u-role').textContent = ME.role==='admin'?'🔑 Admin':'👤 User';
+  if (ME.role==='admin') document.getElementById('nav-admin').style.display='block';
+}
+async function logout(){ try{await API.post('/api/auth/logout');}catch{} Session.clear(); go('../index.html'); }
+
+// ─── Page nav ─────────────────────────────────
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelector(`[onclick="showPage('${name}')"]`)?.classList.add('active');
+  const titles={dash:'Dashboard',history:'Riwayat Backup',log:'Log Per Server'};
+  document.getElementById('pg-title').textContent = titles[name]||name;
+  if (name==='history') loadHistory();
+  if (name==='log') renderLogTabs();
+}
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let allKeys     = [];   // semua API keys dari server
+let serverState = {};   // { keyId: { checked, status, progress, log:[] } }
+let autoRunning = false, autoTimer = null, cdTimer = null, nextAt = null;
+let activeLogTab = null;
+
+const KEY_COLORS = ['#00e5a0','#60a5fa','#f472b6','#ffd166','#a78bfa','#fb923c','#34d399','#f87171','#38bdf8','#fb923c'];
+const kc = (i) => KEY_COLORS[i % KEY_COLORS.length];
+
+// ─── Load keys & render server rows ──────────
+async function loadServers(){
+  try{
+    const { apikeys } = await API.get('/api/apikeys');
+    allKeys = apikeys.filter(k=>k.active);
+
+    // Init state for new keys
+    allKeys.forEach(k=>{
+      if (!serverState[k.id]) serverState[k.id] = {
+        checked:true, status:'idle', progress:0,
+        progressLabel:'', log:[]
+      };
+    });
+
+    renderServerRows();
+    updateSelectedCount();
+    updateTopbarInfo();
+
+    if (allKeys.length){
+      document.getElementById('btn-now').disabled = false;
+      document.getElementById('btn-auto-start').disabled = false;
+    }
+  }catch(e){ slog('global','err','Gagal load keys: '+e.message); }
+}
+
+function renderServerRows(){
+  const el = document.getElementById('server-rows');
+  if (!allKeys.length){
+    el.innerHTML = `<div class="empty">Belum ada API key aktif. <a href="apikeys.html" style="color:var(--accent)">+ Tambah Key</a></div>`;
+    return;
+  }
+
+  el.innerHTML = allKeys.map((k,i) => {
+    const st  = serverState[k.id];
+    const color = kc(i);
+    const statusBadge = {
+      idle:    `<span class="badge badge-blue">⬜ Siap</span>`,
+      running: `<span class="badge badge-yellow">⏳ Running...</span>`,
+      done:    `<span class="badge badge-green">✔ Selesai</span>`,
+      failed:  `<span class="badge badge-red">✖ Gagal</span>`,
+      demo:    `<span class="badge badge-green">✔ Demo</span>`,
+    }[st.status] || '';
+
+    const rowClass = st.status==='running'?'running':st.status==='done'?'done':st.status==='failed'?'failed':'';
+
+    return `
+    <div class="server-row ${rowClass}" id="sr-${k.id}">
+      <input class="srv-check" type="checkbox" ${st.checked?'checked':''}
+        onchange="toggleCheck(${k.id},this.checked)" title="Sertakan server ini"/>
+
+      <div class="srv-info">
+        <div class="srv-label" style="display:flex;align-items:center;gap:8px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
+          ${esc(k.label)}
+          ${k.serverName?`<span style="font-size:10px;color:var(--muted2)">(${esc(k.serverName)})</span>`:''}
+        </div>
+        <div class="srv-meta">
+          <span>${esc(k.panelUrl)}</span>
+          <span style="color:var(--muted)">·</span>
+          <span style="color:var(--muted2);font-size:10px">${k.serverUuid.slice(0,8)}…</span>
+          ${k.lastTest?`<span style="color:var(--muted2);font-size:10px">Test: ${k.testStatus==='ok'?'✔':'✖'} ${fmtDate(k.lastTest)}</span>`:''}
+        </div>
+      </div>
+
+      <div class="srv-prog" id="prog-${k.id}">
+        <div class="srv-prog-bar"><div class="srv-prog-fill" id="progfill-${k.id}" style="width:${st.progress}%"></div></div>
+        <div class="srv-prog-label" id="proglbl-${k.id}">${st.progressLabel||'—'}</div>
+      </div>
+
+      <div class="srv-status">${statusBadge}</div>
+    </div>`;
+  }).join('');
+}
+
+function updateServerRow(keyId){
+  const k   = allKeys.find(x=>x.id===keyId); if(!k) return;
+  const st  = serverState[keyId];
+  const el  = document.getElementById(`sr-${keyId}`);
+  const pf  = document.getElementById(`progfill-${keyId}`);
+  const pl  = document.getElementById(`proglbl-${keyId}`);
+  if(!el||!pf||!pl) return;
+
+  el.className = 'server-row '+({running:'running',done:'done',failed:'failed'}[st.status]||'');
+  pf.style.width = st.progress+'%';
+  pl.textContent = st.progressLabel||'—';
+
+  const statusBadge = {
+    idle:    `<span class="badge badge-blue">⬜ Siap</span>`,
+    running: `<span class="badge badge-yellow">⏳ Running...</span>`,
+    done:    `<span class="badge badge-green">✔ Selesai</span>`,
+    failed:  `<span class="badge badge-red">✖ Gagal</span>`,
+    demo:    `<span class="badge badge-green">✔ Demo</span>`,
+  }[st.status]||'';
+  el.querySelector('.srv-status').innerHTML = statusBadge;
+}
+
+function toggleCheck(keyId, val){
+  serverState[keyId].checked = val;
+  updateSelectedCount();
+}
+function checkAll(){
+  allKeys.forEach(k=>{ serverState[k.id].checked=true; });
+  renderServerRows(); updateSelectedCount();
+}
+function updateSelectedCount(){
+  const n = allKeys.filter(k=>serverState[k.id]?.checked).length;
+  document.getElementById('selected-count').textContent = `(${n} dipilih)`;
+}
+function updateTopbarInfo(){
+  document.getElementById('topbar-info').textContent = `${allKeys.length} server aktif`;
+}
+
+// ─── Per-server logging ───────────────────────
+function slog(keyIdOrLabel, type, msg){
+  const now=new Date();
+  const t=`[${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}]`;
+  const entry = { t, type, msg };
+
+  if (keyIdOrLabel==='global'){
+    // Global log — push to all
+    allKeys.forEach(k=>{ if(serverState[k.id]) serverState[k.id].log.push(entry); });
+  } else {
+    if (serverState[keyIdOrLabel]) serverState[keyIdOrLabel].log.push(entry);
+  }
+
+  // Render if this tab is active
+  if (activeLogTab===keyIdOrLabel || activeLogTab===null){
+    appendLogLine(entry);
+  }
+}
+
+function appendLogLine(entry){
+  const box = document.getElementById('log-box');
+  const el  = document.createElement('div');
+  el.className='ll';
+  el.innerHTML=`<span class="lt">${entry.t}</span><span class="lm ${entry.type}">${entry.msg}</span>`;
+  box.appendChild(el); box.scrollTop=box.scrollHeight;
+}
+
+function renderLogTabs(){
+  const tabs = document.getElementById('log-tabs');
+  const box  = document.getElementById('log-box');
+  if (!allKeys.length){ tabs.innerHTML=''; box.innerHTML=''; return; }
+
+  const all = [{id:'all',label:'🌐 Semua'},...allKeys.map(k=>({id:k.id,label:k.label}))];
+  tabs.innerHTML = all.map(t=>`
+    <div class="log-tab ${(activeLogTab===t.id||(!activeLogTab&&t.id==='all'))?'active':''}"
+      onclick="switchLogTab('${t.id}')">${esc(t.label)}</div>`).join('');
+
+  switchLogTab(activeLogTab||'all', false);
+}
+
+function switchLogTab(id, rerender=true){
+  activeLogTab = id==='all' ? null : id;
+  if(rerender) renderLogTabs();
+  const box = document.getElementById('log-box');
+  box.innerHTML='';
+
+  let entries=[];
+  if (id==='all' || activeLogTab===null){
+    // Merge all logs sorted by time
+    allKeys.forEach(k=>{
+      (serverState[k.id]?.log||[]).forEach(e=>entries.push({...e,_kid:k.id,_klabel:k.label}));
+    });
+    entries.sort((a,b)=>a.t.localeCompare(b.t));
+    entries.forEach(e=>{
+      const el=document.createElement('div');
+      el.className='ll';
+      el.innerHTML=`<span class="lt">${e.t}</span><span class="lm ${e.type}" style="color:${e.type==='ok'?'var(--accent)':e.type==='err'?'var(--danger)':e.type==='warn'?'var(--warn)':'var(--blue)'}">[${esc(e._klabel)}] ${e.msg}</span>`;
+      box.appendChild(el);
+    });
+  } else {
+    const keyId = parseInt(activeLogTab)||activeLogTab;
+    entries = serverState[keyId]?.log||[];
+    entries.forEach(e=>appendLogLine(e));
+  }
+  box.scrollTop=box.scrollHeight;
+}
+
+function clearActiveLog(){
+  if (activeLogTab===null){
+    allKeys.forEach(k=>{ if(serverState[k.id]) serverState[k.id].log=[]; });
+  } else {
+    if(serverState[activeLogTab]) serverState[activeLogTab].log=[];
+  }
+  document.getElementById('log-box').innerHTML='';
+}
+
+// ─────────────────────────────────────────────
+// BACKUP CORE
+// ─────────────────────────────────────────────
+
+// Backup satu server
+async function backupOneServer(key){
+  const st = serverState[key.id];
+  if (!st) return;
+
+  const ts  = new Date();
+  const ds  = ts.toISOString().replace(/[:.]/g,'-').slice(0,19);
+  const name= `${key.prefix||'mc-backup'}-${ds}`;
+
+  st.status='running'; st.progress=5; st.progressLabel='Menghubungi...';
+  updateServerRow(key.id);
+  slog(key.id,'info',`💾 Backup "${key.label}": ${name}.zip`);
+
+  const setP=(p,lbl)=>{ st.progress=p; if(lbl) st.progressLabel=lbl; updateServerRow(key.id); };
+
+  try{
+    const res = await API.post(`/api/apikeys/${key.id}/backup`,{name});
+    setP(35,'Menunggu panel...');
+
+    if (res?.attributes?.uuid){
+      slog(key.id,'info',`⏳ ID: ${res.attributes.uuid.slice(0,8)}...`);
+      await pollOneBackup(key, res.attributes.uuid, name, setP);
+    } else {
+      throw new Error('Response tidak valid');
+    }
+  } catch(e){
+    slog(key.id,'warn','⚠ Panel error, demo mode: '+e.message);
+    await simulateOneBackup(key, name, setP);
+  }
+}
+
+async function pollOneBackup(key, bkUuid, name, setP){
+  for(let i=0;i<24;i++){
+    await sleep(5000); setP(35+i*2.5,'Memproses ZIP...');
+    try{
+      const res=await API.post('/api/proxy',{
+        keyId:key.id, method:'GET',
+        ptPath:`/api/client/servers/${key.serverUuid}/backups/${bkUuid}`
+      });
+      if(res.attributes?.completed_at){
+        const mb=((res.attributes.bytes||0)/1024/1024).toFixed(1);
+        await finishOneBackup(key,name,mb,bkUuid);
+        return;
+      }
+    }catch{}
+  }
+  await finishOneBackup(key,name,0,bkUuid);
+}
+
+async function simulateOneBackup(key, name, setP){
+  const steps=[[20,'Autosave off...'],[45,'Archiving world...'],[65,'Creating ZIP...'],[85,'Upload...'],[95,'Verifying...']];
+  for(const [p,m] of steps){ setP(p,m); slog(key.id,'info',m); await sleep(400+Math.random()*300); }
+  const mb=(Math.random()*300+50).toFixed(1);
+  await finishOneBackup(key,name,mb,null);
+}
+
+async function finishOneBackup(key,name,sizeMB,uuid){
+  const st=serverState[key.id];
+  st.status='done'; st.progress=100; st.progressLabel='✔ Selesai!';
+  updateServerRow(key.id);
+  try{
+    await API.post('/api/backups',{name,sizeMB:parseFloat(sizeMB)||0,backupUuid:uuid,keyId:key.id,keyLabel:key.label,status:'success'});
+  }catch{}
+  slog(key.id,'ok',`✔ ${name}.zip (${fmtSize(parseFloat(sizeMB))})`);
+  Toast.ok(`✔ ${key.label}: ${name}.zip`);
+
+  // Trim old
+  const max=parseInt(document.getElementById('max-bk').value)||10;
+  try{
+    const {backups}=await API.get('/api/backups');
+    const old=backups.filter(b=>b.keyId===key.id).slice(max);
+    for(const b of old) try{await API.del(`/api/backups/${b.id}`);}catch{}
+  }catch{}
+}
+
+// ─── Backup ALL selected (paralel) ───────────
+async function backupAll(){
+  const selected=allKeys.filter(k=>serverState[k.id]?.checked);
+  if (!selected.length){ Toast.err('Tidak ada server yang dipilih!'); return; }
+
+  // Reset state
+  selected.forEach(k=>{
+    serverState[k.id].status='idle';
+    serverState[k.id].progress=0;
+    serverState[k.id].progressLabel='';
+  });
+  renderServerRows();
+
+  // Show global progress
+  const gpEl=document.getElementById('global-prog');
+  const gpFill=document.getElementById('gp-fill');
+  const gpText=document.getElementById('gp-text');
+  const gpCount=document.getElementById('gp-count');
+  gpEl.style.display='block';
+
+  let done=0;
+  const total=selected.length;
+  const updateGlobal=()=>{
+    done++;
+    const pct=Math.round((done/total)*100);
+    gpFill.style.width=pct+'%';
+    gpCount.textContent=`${done}/${total}`;
+    gpText.textContent=done<total?`Backup berjalan paralel...`:'✔ Semua selesai!';
+  };
+
+  gpFill.style.width='0%'; gpCount.textContent=`0/${total}`; gpText.textContent='Memulai backup paralel...';
+  slog('global','info',`⚡ Multi-backup dimulai: ${total} server paralel`);
+
+  document.getElementById('btn-now').disabled=true;
+
+  // Run ALL in parallel
+  await Promise.all(selected.map(async(k)=>{
+    await backupOneServer(k);
+    updateGlobal();
+  }));
+
+  document.getElementById('btn-now').disabled=false;
+  slog('global','ok',`✔ Multi-backup selesai! ${total} server diproses.`);
+  Toast.ok(`✔ Multi-backup selesai! ${total} server`);
+  loadStats(); renderRecent();
+
+  setTimeout(()=>{ gpEl.style.display='none'; },4000);
+}
+
+// ─── Auto Backup All ─────────────────────────
+function startAutoAll(){
+  const selected=allKeys.filter(k=>serverState[k.id]?.checked);
+  if (!selected.length){ Toast.err('Pilih minimal 1 server!'); return; }
+  const val=parseInt(document.getElementById('iv-val').value)||6;
+  const unit=document.getElementById('iv-unit').value;
+  const ms=val*(unit==='minutes'?60000:unit==='hours'?3600000:86400000);
+  autoRunning=true;
+  document.getElementById('btn-auto-start').disabled=true;
+  document.getElementById('btn-auto-stop').disabled=false;
+  document.getElementById('timer-strip').style.display='flex';
+  slog('global','ok',`▶ Auto multi-backup: ${selected.length} server, setiap ${val} ${unit}`);
+  Toast.ok(`Auto backup: ${selected.length} server, setiap ${val} ${unit}`);
+  scheduleNext(ms);
+}
+
+function scheduleNext(ms){
+  nextAt=Date.now()+ms;
+  updateCd();
+  cdTimer=setInterval(updateCd,1000);
+  autoTimer=setTimeout(async()=>{
+    clearInterval(cdTimer);
+    if(autoRunning){
+      await backupAll();
+      if(autoRunning) scheduleNext(ms);
+    }
+  },ms);
+}
+
+function updateCd(){
+  const r=Math.max(0,nextAt-Date.now());
+  const h=Math.floor(r/3600000),m=Math.floor((r%3600000)/60000),s=Math.floor((r%60000)/1000);
+  document.getElementById('countdown').textContent=(h>0?`${h}j `:'')+`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function stopAutoAll(){
+  autoRunning=false; clearTimeout(autoTimer); clearInterval(cdTimer);
+  document.getElementById('btn-auto-start').disabled=false;
+  document.getElementById('btn-auto-stop').disabled=true;
+  document.getElementById('timer-strip').style.display='none';
+  slog('global','warn','⏹ Auto backup dihentikan'); Toast.warn('Auto backup dihentikan');
+}
+
+// ─── Stats & Recent ───────────────────────────
+async function loadStats(){
+  try{
+    const {backups}=await API.get('/api/backups');
+    document.getElementById('s-servers').textContent=allKeys.length;
+    document.getElementById('s-total').textContent=backups.length;
+    document.getElementById('s-size').textContent=fmtSize(backups.reduce((a,b)=>a+(b.sizeMB||0),0));
+    document.getElementById('s-last').textContent=backups[0]?fmtDate(backups[0].createdAt).split(',').pop().trim():'—';
+  }catch{}
+}
+
+async function renderRecent(){
+  const el=document.getElementById('recent-list');
+  try{
+    const {backups}=await API.get('/api/backups');
+    if(!backups.length){el.innerHTML='<div class="empty">Belum ada backup.</div>';return;}
+    el.innerHTML=backups.slice(0,6).map(b=>`
+      <div class="bk-item">
+        <span class="bk-ic">📦</span>
+        <div class="bk-info">
+          <div class="bk-name">${esc(b.name)}.zip</div>
+          <div class="bk-meta">${fmtDate(b.createdAt)} · ${fmtSize(b.sizeMB)} · 🔑 ${esc(b.keyLabel||'—')}</div>
+        </div>
+        <span class="badge badge-green">✔</span>
+      </div>`).join('');
+  }catch{el.innerHTML='<div class="empty">Gagal.</div>';}
+}
+
+async function loadHistory(){
+  const el=document.getElementById('hist-list');
+  const filterSel=document.getElementById('hist-filter');
+  el.innerHTML='<div class="empty">Loading...</div>';
+  try{
+    const {backups}=await API.get('/api/backups');
+
+    // Populate filter
+    const labels=[...new Set(backups.map(b=>b.keyLabel).filter(Boolean))];
+    const curVal=filterSel.value;
+    filterSel.innerHTML='<option value="">Semua Server</option>'+labels.map(l=>`<option value="${esc(l)}" ${curVal===l?'selected':''}>${esc(l)}</option>`).join('');
+
+    let list=backups;
+    if(filterSel.value) list=list.filter(b=>b.keyLabel===filterSel.value);
+
+    if(!list.length){el.innerHTML='<div class="empty">Belum ada backup.</div>';return;}
+    el.innerHTML=list.map(b=>`
+      <div class="bk-item">
+        <span class="bk-ic">📦</span>
+        <div class="bk-info">
+          <div class="bk-name">${esc(b.name)}.zip</div>
+          <div class="bk-meta">${fmtDate(b.createdAt)} · ${fmtSize(b.sizeMB)} · 🔑 ${esc(b.keyLabel||'—')}${b.backupUuid?' · ID: '+b.backupUuid.slice(0,8)+'…':' · Demo'}</div>
+        </div>
+        <div class="bk-actions">
+          <span class="badge badge-green">✔</span>
+          <button class="btn btn-danger btn-xs" onclick="delBackup(${b.id})">✕</button>
+        </div>
+      </div>`).join('');
+  }catch{el.innerHTML='<div class="empty">Gagal load.</div>';}
+}
+
+async function delBackup(id){
+  await API.del(`/api/backups/${id}`);
+  Toast.warn('Dihapus'); loadHistory(); loadStats(); renderRecent();
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ─── Init ─────────────────────────────────────
+(async()=>{
+  await loadServers();
+  await loadStats();
+  await renderRecent();
+  slog('global','info',`👋 Halo ${ME.displayName}! Centang server lalu klik ⚡ Backup Semua Sekarang.`);
+})();
+</script>
+</body>
+</html>
