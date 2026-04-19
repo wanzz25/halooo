@@ -1,0 +1,15 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "wanzz3369",
+      "role": "admin",
+      "displayName": "Wanzz",
+      "avatar": "W",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "lastLogin": null
+    }
+  ],
+  "nextId": 2
+}
